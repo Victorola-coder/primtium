@@ -15,7 +15,7 @@ const defaultConfig = {
 
 // Load configuration from file (optional)
 function loadConfig() {
-  const configPath = ".init.json";
+  const configPath = ".project-setup.json";
   try {
     return JSON.parse(fs.readFileSync(configPath, "utf8"));
   } catch (error) {
@@ -25,14 +25,14 @@ function loadConfig() {
 
 // Save configuration to file (optional)
 function saveConfig(config) {
-  const configPath = ".init.json";
+  const configPath = ".project-setup.json";
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
 }
 
 program
-  .name("init")
+  .name("project-setup")
   .version("1.0.0")
-  .description("CLI tool for setting up ReactJs + Vite + Tailwindcss projects");
+  .description("CLI tool for setting up projects");
 
 program
   .command("setup <projectName>")
@@ -49,6 +49,20 @@ program
 
     // Build commands based on options
     const commands = [];
+
+    // Create directory (ensure error handling for existing directory)
+    try {
+      fs.mkdirSync(projectName);
+      console.log(`Created directory: ${projectName}`);
+    } catch (err) {
+      if (err.code === "EEXIST") {
+        console.error(`Directory already exists: ${projectName}`);
+      } else {
+        console.error(err);
+      }
+      return; // Exit if directory creation fails
+    }
+
     commands.push(`cd ${projectName}`);
     if (options.tailwind) {
       commands.push(
@@ -56,11 +70,18 @@ program
       );
     }
     if (options.git) {
-      commands.push(
-        'git init -b dev && git remote add origin https://github.com/your-username/your-repo.git && git add . && git commit -am "init" && git push origin dev'
-      );
+      // Prompt user for remote repository URL
+      const remoteUrl = program.prompt("Enter the remote repository URL: ");
+
+      commands.push("git init -b dev");
+      commands.push(`git remote add origin ${remoteUrl}`);
+      commands.push('git add . && git commit -am "init"');
+      // Prompt user for confirmation before pushing
+      if (program.confirm("Push to remote repository?")) {
+        commands.push(`git push origin dev`);
+      }
     }
-    commands.push("code ."); // Open in code editor
+    // commands.push("code ."); // Open in code editor
 
     // Execute commands sequentially
     commands.forEach((command) => {
